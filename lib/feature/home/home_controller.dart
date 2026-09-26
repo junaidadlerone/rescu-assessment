@@ -23,6 +23,9 @@ class HomeController extends GetxController {
   int _page = 1;
   int _totalPages = 1;
   bool _isFetchingMore = false;
+  // Bumped on every refreshDeals() call. A refresh invalidates anything in
+  // flight; both methods drop responses whose captured epoch no longer matches.
+  int _refreshEpoch = 0;
 
   bool get hasMore => _page < _totalPages;
 
@@ -56,11 +59,22 @@ class HomeController extends GetxController {
   }
 
   Future<void> refreshDeals() async {
-    _page = 1;
-    final res = await dealRepo.fetchDeals(page: 1);
-    _totalPages = res.totalPages;
-    deals.assignAll(res.items);
-    refreshController.refreshCompleted();
+    final myEpoch = ++_refreshEpoch;
+    try {
+      final res = await dealRepo.fetchDeals(page: 1);
+      if (myEpoch != _refreshEpoch) return;
+      _page = 1;
+      _totalPages = res.totalPages;
+      _isFetchingMore = false;
+      deals.assignAll(res.items);
+    } catch (e) {
+      LogService.error('refreshDeals failed', e);
+    } finally {
+      if (myEpoch == _refreshEpoch) {
+        refreshController.refreshCompleted();
+        refreshController.loadComplete();
+      }
+    }
   }
 
   Future<void> loadMore() async {
@@ -69,18 +83,23 @@ class HomeController extends GetxController {
       refreshController.loadNoData();
       return;
     }
+    final myEpoch = _refreshEpoch;
+    final targetPage = _page + 1;
     _isFetchingMore = true;
-    _page++;
     try {
-      final res = await dealRepo.fetchDeals(page: _page);
+      final res = await dealRepo.fetchDeals(page: targetPage);
+      if (myEpoch != _refreshEpoch) return;
+      _page = targetPage;
       _totalPages = res.totalPages;
       deals.addAll(res.items);
     } catch (e) {
       LogService.error('loadMore failed', e);
-      _page--;
+    } finally {
+      if (myEpoch == _refreshEpoch) {
+        _isFetchingMore = false;
+        refreshController.loadComplete();
+      }
     }
-    _isFetchingMore = false;
-    refreshController.loadComplete();
   }
 
   void scrollToTop() {

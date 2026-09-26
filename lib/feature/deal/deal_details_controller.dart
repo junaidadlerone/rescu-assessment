@@ -4,6 +4,7 @@ import '../../model/deal_model.dart';
 import '../../repository/deal_repo.dart';
 import '../../service/analytics_service.dart';
 import '../../service/cart_service.dart';
+import '../../service/countdown_ticker.dart';
 import '../../util/log_service.dart';
 
 /// The screen has two entry paths that hand it data differently:
@@ -47,7 +48,15 @@ class DealDetailsController extends GetxController {
   int? get quantityLeft => _quantityLeft.value;
   bool get isLoading => _isLoading.value;
   String? get errorMessage => _errorMessage.value;
-  bool get canAddToCart => !isLoading && errorMessage == null && deal != null;
+  bool get canAddToCart {
+    if (isLoading || errorMessage != null || deal == null) return false;
+    final endsAt = deal!.flashSaleEndsAt;
+    if (endsAt == null) return true;
+    // Reading `ticker.now.value` inside a getter that an Obx observes makes
+    // the button reactively disable itself the second the sale expires.
+    if (!Get.isRegistered<CountdownTicker>()) return true;
+    return Get.find<CountdownTicker>().now.value.isBefore(endsAt);
+  }
 
   Worker? _availabilityWatcher;
   int? _pendingId;

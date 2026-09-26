@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../app_config.dart';
 import '../../../model/deal_model.dart';
 import '../../../routes/routes.dart';
+import '../../shared_widget/flash_countdown.dart';
 import '../../shared_widget/the_network_image.dart';
 
 /// Horizontal flash-sale rail.
@@ -83,19 +84,11 @@ class FlashDealsSection extends StatelessWidget {
                                           fontWeight: FontWeight.bold,
                                           color: AppConfig.primaryGreen)),
                                   const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade50,
-                                      borderRadius: BorderRadius.circular(4),
+                                  if (deal.flashSaleEndsAt != null)
+                                    FlashCountdown(
+                                      endsAt: deal.flashSaleEndsAt!,
+                                      emphasis: FlashCountdownEmphasis.low,
                                     ),
-                                    child: Text('Ends soon',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.red.shade700)),
-                                  ),
                                 ],
                               ),
                             ],

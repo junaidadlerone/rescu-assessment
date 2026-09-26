@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../app_config.dart';
 import '../../model/deal_model.dart';
+import '../shared_widget/flash_countdown.dart';
 import '../shared_widget/the_network_image.dart';
 import 'deal_details_controller.dart';
 
@@ -125,6 +126,20 @@ class _LoadedScaffold extends StatelessWidget {
                           )),
                     ],
                   ),
+                  if (deal.flashSaleEndsAt != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.bolt, color: Colors.red, size: 18),
+                        const SizedBox(width: 6),
+                        const Text('Flash sale ends in',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.black87)),
+                        const SizedBox(width: 8),
+                        FlashCountdown(endsAt: deal.flashSaleEndsAt!),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -195,11 +210,19 @@ class _LoadedScaffold extends StatelessWidget {
         color: Colors.white,
         child: SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: controller.canAddToCart ? controller.addToCart : null,
-            icon: const Icon(Icons.add_shopping_cart),
-            label: const Text('Add to bag'),
-          ),
+          child: Obx(() {
+            final canAdd = controller.canAddToCart;
+            final isFlashExpired = deal.flashSaleEndsAt != null && !canAdd &&
+                !controller.isLoading &&
+                controller.errorMessage == null;
+            return FilledButton.icon(
+              onPressed: canAdd ? controller.addToCart : null,
+              icon: Icon(isFlashExpired
+                  ? Icons.timer_off
+                  : Icons.add_shopping_cart),
+              label: Text(isFlashExpired ? 'Flash sale ended' : 'Add to bag'),
+            );
+          }),
         ),
       ),
     );

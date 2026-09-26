@@ -15,7 +15,13 @@ class HomeController extends GetxController {
   final flashDeals = <DealModel>[].obs;
   final isLoading = true.obs;
   final todayOnly = false.obs;
-  final scrollOffset = 0.0.obs;
+  // Threshold-crossing observables — the raw scroll offset changes every frame
+  // and would drive per-frame rebuilds on anything observing it. These only
+  // flip when the user crosses the visual thresholds. See RES-105.
+  final showAppBarShadow = false.obs;
+  final showScrollToTop = false.obs;
+  static const double _shadowThreshold = 4;
+  static const double _scrollToTopThreshold = 800;
 
   final scrollController = ScrollController();
   final refreshController = RefreshController();
@@ -29,9 +35,13 @@ class HomeController extends GetxController {
 
   bool get hasMore => _page < _totalPages;
 
-  List<DealModel> get visibleDeals => todayOnly.value
-      ? deals.where((d) => d.pickupWindow.isToday).toList()
-      : deals.toList();
+  // Lazy iterable — no allocation on read. Callers materialise once per rebuild
+  // (e.g. via .length + indexed access in a SliverList.builder). Combined with
+  // the per-frame Obx being gone, this means the filter no longer runs on every
+  // scroll frame.
+  Iterable<DealModel> get visibleDeals => todayOnly.value
+      ? deals.where((d) => d.pickupWindow.isToday)
+      : deals;
 
   @override
   void onInit() {
@@ -41,7 +51,15 @@ class HomeController extends GetxController {
   }
 
   void _onScroll() {
-    scrollOffset.value = scrollController.offset;
+    final offset = scrollController.offset;
+    final shadowNow = offset > _shadowThreshold;
+    if (showAppBarShadow.value != shadowNow) {
+      showAppBarShadow.value = shadowNow;
+    }
+    final topNow = offset > _scrollToTopThreshold;
+    if (showScrollToTop.value != topNow) {
+      showScrollToTop.value = topNow;
+    }
   }
 
   Future<void> _initialLoad() async {

@@ -103,3 +103,67 @@ real data.
 ## Running notes
 
 <!-- Append new entries here as they happen. Keep the claim / caught / did-instead shape. -->
+
+---
+
+## Slip 3 — "RES-102 fixed by commenting out `setState`"
+
+**Claim.** Working on RES-102 solo, I concluded the fix was to comment out the
+`setState(() {})` inside `Timer.periodic(...)` because "`setState` should never
+be called in initState." Committed the change locally and asked Claude to open
+a PR.
+
+**What actually happened.** Claude pushed back: the framework rule is that
+`setState` can't be called *synchronously* during `initState`. But the buggy
+code doesn't do that — `Timer.periodic`'s callback fires a second later, when
+the widget is mounted and `setState` is legal. Commenting it out silences the
+crash by disabling the countdown update, and leaves the timer running forever
+(the actual leak).
+
+**How I caught it.** Claude read the file, quoted lines 21–24 back at me, and
+walked through what my change would do at runtime — the countdown text would
+freeze, and the `flutter_test` "A Timer is still pending" assertion would
+still fail because I hadn't stored or cancelled the timer.
+
+**What I did instead.** Applied the real fix (store `Timer? _ticker`, cancel
+in `dispose`). Shipped as commit `9c7eb14` and PR #2.
+
+**Takeaway.** My rule of thumb — "no `setState` in `initState`" — was too
+coarse and led me to the wrong fix. Working through the runtime timeline out
+loud, or in code, is what surfaced the mismatch. Worth defending in the
+interview: I understand *why* the correct fix works, not just *that* it works.
+
+---
+
+## Slip 4 — "SurfaceFlinger `--latency` will give the same 129-frame trace as the baseline"
+
+**Claim.** Setting up the RES-105 "after" capture, Claude proposed the same
+`dumpsys SurfaceFlinger --latency 'SurfaceView - dev.rescu.rescu/.../MainActivity#0'`
+that produced 129 frames in the baseline, on the assumption that "same
+emulator, same command → same measurement."
+
+**What actually happened.** Same emulator, same command, this session
+returned exactly one line (the vsync period, no per-frame records) — on
+every layer tried, including `Root#0` where the 129 records existed but
+were all zeros. `dumpsys gfxinfo framestats` also returned
+`Total frames rendered: 0` (confirmed in the baseline doc: Flutter bypasses
+HWUI). Multiple attempts across cold restart and fresh SurfaceView
+allocation produced the same result.
+
+**How I caught it.** Ran the exact baseline command, got 1 line back
+instead of 129. Ran the framestats script against it, got obviously
+degenerate numbers. Diagnosed empirically rather than trusting the
+baseline recipe would replay.
+
+**What I did instead.** Documented the failure honestly in
+`docs/evidence/res-105.md`, fell back to what still works (PSS memory
+via `dumpsys meminfo`, screenshot, screen recording, "no exceptions
+during scroll" as a proxy for "no crashes"). Named the two escalation
+paths I didn't take (VM Service pull of `FrameTiming`, in-app
+`addTimingsCallback` instrumentation) and why (scope creep on a
+bug-fix PR).
+
+**Takeaway.** Measurement infrastructure isn't hermetic across sessions
+on Android emulators, even with identical commands. For future
+before/after work I'll capture with an in-app callback instead — same
+tool for both sides, less likely to drift.

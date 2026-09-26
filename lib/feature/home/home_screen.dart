@@ -14,18 +14,94 @@ class HomeScreen extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final offset = controller.scrollOffset.value;
-      return Scaffold(
-        appBar: AppBar(
-          elevation: offset > 4 ? 2 : 0,
+    // Scaffold is intentionally NOT wrapped in Obx. Each reactive island below
+    // rebuilds only when its own dependency changes — see RES-105.
+    return Scaffold(
+      appBar: _HomeAppBar(controller: controller),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return ListView(
+            children: const [
+              ShimmerDealCard(),
+              ShimmerDealCard(),
+              ShimmerDealCard(),
+            ],
+          );
+        }
+        // Materialise the filtered iterable once for both length and access.
+        final visible = controller.visibleDeals.toList(growable: false);
+        return SmartRefresher(
+          controller: controller.refreshController,
+          enablePullDown: true,
+          enablePullUp: true,
+          onRefresh: controller.refreshDeals,
+          onLoading: controller.loadMore,
+          child: CustomScrollView(
+            controller: controller.scrollController,
+            slivers: [
+              if (controller.flashDeals.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: FlashDealsSection(deals: controller.flashDeals),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Row(
+                    children: [
+                      const Text('Nearby deals',
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      FilterChip(
+                        label: const Text('Pickup today'),
+                        selected: controller.todayOnly.value,
+                        onSelected: (v) => controller.todayOnly.value = v,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverList.builder(
+                itemCount: visible.length,
+                itemBuilder: (context, i) => DealCard(deal: visible[i]),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
+        );
+      }),
+      floatingActionButton: Obx(() => controller.showScrollToTop.value
+          ? FloatingActionButton.small(
+              onPressed: controller.scrollToTop,
+              child: const Icon(Icons.arrow_upward),
+            )
+          : const SizedBox.shrink()),
+    );
+  }
+}
+
+// Extracted so the AppBar's Obx watches only [showAppBarShadow]. The rest of
+// the bar is const or captures immutable callbacks — nothing else rebuilds on
+// scroll.
+class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final HomeController controller;
+  const _HomeAppBar({required this.controller});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() => AppBar(
+          elevation: controller.showAppBarShadow.value ? 2 : 0,
           shadowColor: Colors.black26,
           title: const Row(
             children: [
               Icon(Icons.eco, color: AppConfig.primaryGreen),
               SizedBox(width: 8),
               Text('Rescu',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
             ],
           ),
           actions: [
@@ -58,56 +134,7 @@ class HomeScreen extends GetView<HomeController> {
               ],
             ),
           ],
-        ),
-        body: controller.isLoading.value
-            ? ListView(
-                children: const [
-                  ShimmerDealCard(),
-                  ShimmerDealCard(),
-                  ShimmerDealCard(),
-                ],
-              )
-            : SmartRefresher(
-                controller: controller.refreshController,
-                enablePullDown: true,
-                enablePullUp: true,
-                onRefresh: controller.refreshDeals,
-                onLoading: controller.loadMore,
-                child: ListView(
-                  controller: controller.scrollController,
-                  children: [
-                    if (controller.flashDeals.isNotEmpty)
-                      FlashDealsSection(deals: controller.flashDeals),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Row(
-                        children: [
-                          const Text('Nearby deals',
-                              style: TextStyle(
-                                  fontSize: 17, fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          FilterChip(
-                            label: const Text('Pickup today'),
-                            selected: controller.todayOnly.value,
-                            onSelected: (v) => controller.todayOnly.value = v,
-                          ),
-                        ],
-                      ),
-                    ),
-                    ...controller.visibleDeals
-                        .map((deal) => DealCard(deal: deal)),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-        floatingActionButton: offset > 800
-            ? FloatingActionButton.small(
-                onPressed: controller.scrollToTop,
-                child: const Icon(Icons.arrow_upward),
-              )
-            : null,
-      );
-    });
+        ));
   }
 
   void _showDeepLinkDialog(BuildContext context) {

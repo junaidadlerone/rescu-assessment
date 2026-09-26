@@ -2,9 +2,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:rescu/model/deal_model.dart';
 import 'package:rescu/model/pickup_window_model.dart';
+import 'package:rescu/model/reservation_model.dart';
+import 'package:rescu/repository/order_repo.dart';
 import 'package:rescu/service/analytics_service.dart';
 import 'package:rescu/service/cart_service.dart';
 import 'package:rescu/service/countdown_ticker.dart';
+import 'package:rescu/service/fake_api_service.dart';
+
+/// Stub OrderRepo used by the flash tests — F-3 makes cart.add reserve
+/// stock via OrderRepo. These tests aren't about reservations, so we hand
+/// back a synthetic reservation immediately and move on.
+class _StubOrderRepo extends OrderRepo {
+  _StubOrderRepo() : super(api: FakeApiService());
+
+  int _seq = 0;
+
+  @override
+  Future<ReservationModel> reserve(int dealId, {int quantity = 1}) async {
+    _seq++;
+    return ReservationModel(
+      id: 'stub_$_seq',
+      dealId: dealId,
+      quantity: quantity,
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+    );
+  }
+
+  @override
+  Future<void> releaseReservation(String reservationId) async {}
+}
 
 DealModel _deal(
   int id, {
@@ -49,6 +75,8 @@ void main() {
 
     analytics = AnalyticsService();
     Get.put<AnalyticsService>(analytics);
+
+    Get.put<OrderRepo>(_StubOrderRepo());
 
     cart = CartService();
     Get.put<CartService>(cart);

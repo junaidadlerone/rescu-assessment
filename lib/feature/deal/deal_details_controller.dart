@@ -7,6 +7,7 @@ import '../../service/cart_service.dart';
 import '../../util/log_service.dart';
 
 class DealDetailsController extends GetxController {
+  Worker? _availabilityWatcher;
   final DealRepo dealRepo;
   final CartService cartService;
   final AnalyticsService analytics;
@@ -31,9 +32,7 @@ class DealDetailsController extends GetxController {
       'deal_id': deal.id,
       'source': Get.parameters['source'] ?? 'unknown',
     });
-    // Whenever the cart changes, re-check this deal's remaining stock so the
-    // details screen never shows stale availability.
-    ever(cartService.itemCount, (_) => _recheckAvailability());
+    _availabilityWatcher = ever(cartService.itemCount, (_) => _recheckAvailability());
   }
 
   Future<void> _recheckAvailability() async {
@@ -50,5 +49,11 @@ class DealDetailsController extends GetxController {
       snackPosition: SnackPosition.BOTTOM,
       duration: const Duration(seconds: 2),
     );
+  }
+
+  @override
+  void onClose() {
+    _availabilityWatcher?.dispose();
+    super.onClose();
   }
 }

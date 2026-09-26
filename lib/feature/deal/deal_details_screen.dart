@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../app_config.dart';
+import '../../model/deal_model.dart';
 import '../shared_widget/the_network_image.dart';
 import 'deal_details_controller.dart';
 
@@ -10,7 +11,70 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
 
   @override
   Widget build(BuildContext context) {
-    final deal = controller.deal;
+    return Obx(() {
+      final deal = controller.deal;
+      final error = controller.errorMessage;
+      if (deal != null) {
+        return _LoadedScaffold(deal: deal, controller: controller);
+      }
+      if (error != null) {
+        return _ErrorScaffold(message: error, onRetry: controller.retry);
+      }
+      return const _LoadingScaffold();
+    });
+  }
+}
+
+class _LoadingScaffold extends StatelessWidget {
+  const _LoadingScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Loading deal…')),
+      body: const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ErrorScaffold extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+
+  const _ErrorScaffold({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Deal')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 40, color: Colors.grey.shade600),
+              const SizedBox(height: 12),
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadedScaffold extends StatelessWidget {
+  final DealModel deal;
+  final DealDetailsController controller;
+
+  const _LoadedScaffold({required this.deal, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -56,7 +120,8 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
                       Obx(() => Chip(
                             avatar: const Icon(Icons.inventory_2_outlined,
                                 size: 16),
-                            label: Text('${controller.quantityLeft ?? '-'} left'),
+                            label:
+                                Text('${controller.quantityLeft ?? '-'} left'),
                           )),
                     ],
                   ),
@@ -131,7 +196,7 @@ class DealDetailsScreen extends GetView<DealDetailsController> {
         child: SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: controller.addToCart,
+            onPressed: controller.canAddToCart ? controller.addToCart : null,
             icon: const Icon(Icons.add_shopping_cart),
             label: const Text('Add to bag'),
           ),

@@ -5,6 +5,7 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import '../../app_config.dart';
 import '../../routes/routes.dart';
 import '../shared_widget/deal_card.dart';
+import '../shared_widget/impression_tracked.dart';
 import '../shared_widget/shimmer_deal_card.dart';
 import 'home_controller.dart';
 import 'widget/flash_deals_section.dart';
@@ -63,7 +64,12 @@ class HomeScreen extends GetView<HomeController> {
               ),
               SliverList.builder(
                 itemCount: visible.length,
-                itemBuilder: (context, i) => DealCard(deal: visible[i]),
+                itemBuilder: (context, i) => ImpressionTracked(
+                  dealId: visible[i].id,
+                  source: 'home',
+                  position: i,
+                  child: DealCard(deal: visible[i]),
+                ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],

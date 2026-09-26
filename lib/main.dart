@@ -10,6 +10,7 @@ import 'service/analytics_service.dart';
 import 'service/cart_service.dart';
 import 'service/countdown_ticker.dart';
 import 'service/fake_api_service.dart';
+import 'service/impression_tracker.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,8 @@ Future<void> initDependencies() async {
   // it to prune items whose flash sale has expired.
   Get.put(CountdownTicker(), permanent: true);
   Get.put(CartService(), permanent: true);
+  // Depends on FakeApiService and AnalyticsService — must land after both.
+  Get.put(ImpressionTracker(), permanent: true);
   Get.lazyPut(() => DealRepo(api: Get.find()), fenix: true);
   Get.lazyPut(() => StoreRepo(api: Get.find()), fenix: true);
   Get.lazyPut(() => OrderRepo(api: Get.find()), fenix: true);

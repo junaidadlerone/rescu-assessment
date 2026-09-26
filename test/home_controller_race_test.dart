@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rescu/feature/home/home_controller.dart';
 import 'package:rescu/model/deal_model.dart';

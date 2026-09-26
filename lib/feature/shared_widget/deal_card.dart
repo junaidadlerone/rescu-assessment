@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../app_config.dart';
 import '../../model/deal_model.dart';
 import '../../routes/routes.dart';
+import 'flash_countdown.dart';
 import 'the_network_image.dart';
 
 /// Deal card used in the home feed and search results.
@@ -35,20 +36,7 @@ class DealCard extends StatelessWidget {
                   Positioned(
                     top: 8,
                     left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade600,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'FLASH SALE',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                    child: FlashCountdown(endsAt: deal.flashSaleEndsAt!),
                   ),
                 Positioned(
                   top: 8,
